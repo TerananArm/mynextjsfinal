@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSound } from '../context/SoundContext';
+import { useSession } from 'next-auth/react';
 import LanguageSelector from './LanguageSelector';
 
 export default function Sidebar() {
@@ -17,19 +18,23 @@ export default function Sidebar() {
   const { isSidebarCollapsed, toggleSidebar, isDarkMode } = useTheme();
   const { language, t } = useLanguage();
   const { play } = useSound();
+  const { data: session } = useSession();
+  const role = session?.user?.role || 'student'; // Safety default
 
-  const menuItems = [
-    { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard' },
-    { name: t('schedule'), icon: Calendar, path: '/dashboard/schedule' },
-    { name: t('rooms'), icon: DoorOpen, path: '/dashboard/rooms' },
-    { name: t('students'), icon: Users, path: '/dashboard/students' },
-    { name: t('teachers'), icon: UserSquare2, path: '/dashboard/teachers' },
-    { name: t('subjects'), icon: BookOpen, path: '/dashboard/subjects' },
-    { name: t('departments'), icon: Building2, path: '/dashboard/departments' },
-    { name: t('levels'), icon: GraduationCap, path: '/dashboard/levels' },
-    { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum' },
-    { name: t('users'), icon: UserCog, path: '/dashboard/users' },
+  const allMenuItems = [
+    { name: t('dashboard'), icon: LayoutDashboard, path: '/dashboard', roles: ['admin', 'teacher', 'student'] },
+    { name: t('schedule'), icon: Calendar, path: '/dashboard/schedule', roles: ['admin', 'teacher', 'student'] },
+    { name: t('rooms'), icon: DoorOpen, path: '/dashboard/rooms', roles: ['admin', 'teacher', 'student'] },
+    { name: t('students'), icon: Users, path: '/dashboard/students', roles: ['admin', 'teacher'] },
+    { name: t('teachers'), icon: UserSquare2, path: '/dashboard/teachers', roles: ['admin', 'teacher'] },
+    { name: t('subjects'), icon: BookOpen, path: '/dashboard/subjects', roles: ['admin', 'teacher', 'student'] },
+    { name: t('departments'), icon: Building2, path: '/dashboard/departments', roles: ['admin'] },
+    { name: t('levels'), icon: GraduationCap, path: '/dashboard/levels', roles: ['admin'] },
+    { name: t('curriculum'), icon: ListChecks, path: '/dashboard/curriculum', roles: ['admin', 'teacher'] },
+    { name: t('users'), icon: UserCog, path: '/dashboard/users', roles: ['admin'] },
   ];
+
+  const menuItems = allMenuItems.filter(item => item.roles.includes(role));
 
   return (
     // ✅ Apple Launchpad Style: เบลอหนัก (blur-[50px]) + สีเทาด้าน (bg-gray-500/30)

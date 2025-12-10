@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSound } from '../context/SoundContext';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import ConfirmModal from './ConfirmModal';
 import DatePicker from './DatePicker';
 
@@ -19,6 +20,8 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
     const { isDarkMode } = useTheme();
     const { t } = useLanguage();
     const { play } = useSound();
+    const { data: session } = useSession();
+    const role = session?.user?.role || 'student';
     const [filters, setFilters] = useState({});
     const [localData, setLocalData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -347,14 +350,27 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Check file extension
+        const fileName = file.name.toLowerCase();
+        if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+            Swal.fire({
+                icon: 'error',
+                title: t('error'),
+                text: 'Please upload only .xlsx or .xls files',
+                background: isDarkMode ? '#1e293b' : '#fff',
+                color: isDarkMode ? '#fff' : '#000'
+            });
+            return;
+        }
+
         // Reset file input
         e.target.value = '';
 
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
+                const data = evt.target.result;
+                const wb = XLSX.read(data, { type: 'array' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const jsonData = XLSX.utils.sheet_to_json(ws, { cellDates: true });
@@ -441,7 +457,7 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                 });
             }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
     };
 
     const handleCleanData = async () => {
@@ -656,32 +672,36 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                 {/* Toolbar */}
                 <div className={`px-8 pb-6 flex flex-wrap items-center gap-3 shrink-0 border-b ${dividerColor} mx-8 mb-6`}>
 
-                    {/* Action Buttons */}
-                    <button onClick={handleAdd} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'}`}><Plus size={18} /> {t('addSubjectBtn')}</button>
-                    <button onClick={handleDownloadTemplate} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'}`}><FileDown size={18} /> {t('templateBtn')}</button>
-                    <button onClick={() => fileInputRef.current.click()} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-emerald-400' : 'bg-white border-slate-200 hover:bg-slate-50 text-emerald-700 shadow-sm'}`}><FileSpreadsheet size={18} /> {t('importBtn')}</button>
+                    {/* Action Buttons - Admin Only */}
+                    {role === 'admin' && (
+                        <>
+                            <button onClick={handleAdd} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'}`}><Plus size={18} /> {t('addSubjectBtn')}</button>
+                            <button onClick={handleDownloadTemplate} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-white' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 shadow-sm'}`}><FileDown size={18} /> {t('templateBtn')}</button>
+                            <button onClick={() => fileInputRef.current.click()} className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-emerald-400' : 'bg-white border-slate-200 hover:bg-slate-50 text-emerald-700 shadow-sm'}`}><FileSpreadsheet size={18} /> {t('importBtn')}</button>
 
-                    {/* ✨ AI Clean Data Button */}
-                    <button
-                        onClick={handleCleanData}
-                        disabled={isLoading}
-                        className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 group ${isDarkMode ? 'bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-400' : 'bg-purple-50 border-purple-200 hover:bg-purple-100 text-purple-600 shadow-sm'}`}
-                    >
-                        <Sparkles size={18} className="group-hover:animate-spin-slow" />
-                        {t('cleanData') || 'Clean Data'}
-                    </button>
+                            {/* ✨ AI Clean Data Button */}
+                            <button
+                                onClick={handleCleanData}
+                                disabled={isLoading}
+                                className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl border transition-all active:scale-95 group ${isDarkMode ? 'bg-purple-500/10 border-purple-500/20 hover:bg-purple-500/20 text-purple-400' : 'bg-purple-50 border-purple-200 hover:bg-purple-100 text-purple-600 shadow-sm'}`}
+                            >
+                                <Sparkles size={18} className="group-hover:animate-spin-slow" />
+                                {t('cleanData') || 'Clean Data'}
+                            </button>
 
-                    <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".xlsx, .xls" />
-                    <button
-                        onClick={handleBulkDelete}
-                        disabled={selectedIds.length === 0}
-                        className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl shadow-lg transition-all active:scale-95 ${selectedIds.length > 0
-                            ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/30 animate-fade-in'
-                            : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-white/5 dark:text-slate-500 shadow-none'
-                            }`}
-                    >
-                        <Trash2 size={18} /> {t('delete')} {selectedIds.length > 0 ? selectedIds.length : ''}
-                    </button>
+                            <input type="file" ref={fileInputRef} onChange={handleImport} className="hidden" accept=".xlsx, .xls" />
+                            <button
+                                onClick={handleBulkDelete}
+                                disabled={selectedIds.length === 0}
+                                className={`flex items-center justify-center gap-2 px-5 py-3 min-w-[140px] text-sm font-bold rounded-2xl shadow-lg transition-all active:scale-95 ${selectedIds.length > 0
+                                    ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/30 animate-fade-in'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-white/5 dark:text-slate-500 shadow-none'
+                                    }`}
+                            >
+                                <Trash2 size={18} /> {t('delete')} {selectedIds.length > 0 ? selectedIds.length : ''}
+                            </button>
+                        </>
+                    )}
 
                     {/* Filters */}
                     {availableFilters.map(col => (
@@ -751,8 +771,12 @@ export default function TableModal({ isOpen, onClose, title, type, data }) {
                                                 ))}
                                                 <td className="px-4 py-4 text-center">
                                                     <div className="flex items-center justify-center gap-2 opacity-60 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleEdit(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-white text-slate-600 hover:shadow-sm'}`}><Pencil size={16} /></button>
-                                                        <button onClick={() => handleDelete(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500 hover:shadow-sm'}`}><Trash2 size={16} /></button>
+                                                        {(role === 'admin' || role === 'teacher') && (
+                                                            <button onClick={() => handleEdit(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-white text-slate-600 hover:shadow-sm'}`}><Pencil size={16} /></button>
+                                                        )}
+                                                        {role === 'admin' && (
+                                                            <button onClick={() => handleDelete(item)} className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-red-900/30 text-red-400' : 'hover:bg-red-50 text-red-500 hover:shadow-sm'}`}><Trash2 size={16} /></button>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

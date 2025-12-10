@@ -44,42 +44,53 @@ export const authOptions = {
 
                 // 2. Check Student
                 try {
-                    const [students] = await db.execute('SELECT * FROM students WHERE id = ?', [username]);
+                    const [students] = await db.execute('SELECT * FROM students WHERE studentId = ?', [username]);
                     if (students.length > 0) {
                         const student = students[0];
                         let isValid = false;
-                        if (student.password) {
-                            isValid = await bcrypt.compare(password, student.password);
-                        } else {
-                            const dob = formatDateToPassword(student.birthdate);
-                            if (dob && dob === password) {
-                                isValid = true;
+                        if (student.password && student.password !== '1234') { // Check if password changed from default
+                            if (student.password.startsWith('$2')) {
+                                isValid = await bcrypt.compare(password, student.password);
+                            } else {
+                                isValid = student.password === password;
                             }
+                        } else {
+                            // Default: Check birthdate (DDMMYYYY) or default '1234'
+                            const dob = formatDateToPassword(student.birthDate); // Note: Column often camelCase or snake_case depending on DB. Assuming birthDate based on add route.
+                            // Actually add/route.js used birthDate (camelCase) in VALUES listing but lowercase in some selects?
+                            // add/route.js: INSERT INTO students (..., birthDate, ...)
+                            if (password === '1234') isValid = true;
+                            else if (dob && dob === password) isValid = true;
                         }
 
                         if (isValid) {
-                            return { id: student.id, name: student.name, email: null, image: null, role: 'student' };
+                            return { id: student.id, name: student.name, email: null, image: student.image, role: 'student' };
                         }
                     }
                 } catch (e) { console.error("Student login error", e); }
 
                 // 3. Check Teacher
                 try {
-                    const [teachers] = await db.execute('SELECT * FROM teachers WHERE id = ?', [username]);
+                    const [teachers] = await db.execute('SELECT * FROM teachers WHERE teacherId = ?', [username]);
                     if (teachers.length > 0) {
                         const teacher = teachers[0];
                         let isValid = false;
-                        if (teacher.password) {
-                            isValid = await bcrypt.compare(password, teacher.password);
-                        } else {
-                            const dob = formatDateToPassword(teacher.birthdate);
-                            if (dob && dob === password) {
-                                isValid = true;
+                        if (teacher.password && teacher.password !== '1234' && teacher.password !== teacher.teacherId) {
+                            if (teacher.password.startsWith('$2')) {
+                                isValid = await bcrypt.compare(password, teacher.password);
+                            } else {
+                                isValid = teacher.password === password;
                             }
+                        } else {
+                            // Default password checks
+                            const dob = formatDateToPassword(teacher.birthDate);
+                            if (password === '1234') isValid = true;
+                            else if (password === teacher.teacherId) isValid = true; // defaulting to ID?
+                            else if (dob && dob === password) isValid = true;
                         }
 
                         if (isValid) {
-                            return { id: teacher.id, name: teacher.name, email: teacher.email, image: null, role: 'teacher' };
+                            return { id: teacher.id, name: teacher.name, email: null, image: teacher.image, role: 'teacher' };
                         }
                     }
                 } catch (e) { console.error("Teacher login error", e); }

@@ -56,7 +56,7 @@ export async function GET(request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        return NextResponse.json(user);
+        return NextResponse.json({ ...user, role });
     } catch (error) {
         console.error("Get User Error:", error);
         return NextResponse.json({ error: 'Database Error' }, { status: 500 });
