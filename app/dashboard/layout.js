@@ -1,11 +1,40 @@
 // app/dashboard/layout.js
 'use client';
+import { useEffect } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header'; // ✅ แก้ไขจาก './components/Navbar' เป็น '../components/Header'
 import { useTheme } from '../context/ThemeContext';
 
 function DashboardContent({ children }) {
    const { isSidebarCollapsed, isDarkMode } = useTheme();
+   const { data: session, status } = useSession();
+   const router = useRouter();
+
+   // Client-side auth protection (fallback for middleware)
+   useEffect(() => {
+      if (status === 'unauthenticated') {
+         router.replace('/login');
+      }
+   }, [status, router]);
+
+   // Show loading while checking session
+   if (status === 'loading') {
+      return (
+         <div className={`flex h-screen w-full items-center justify-center ${isDarkMode ? 'bg-[#0f172a]' : 'bg-[#f0f4f8]'}`}>
+            <div className="flex flex-col items-center gap-4">
+               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+               <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>กำลังตรวจสอบการเข้าสู่ระบบ...</p>
+            </div>
+         </div>
+      );
+   }
+
+   // Don't render content if not authenticated
+   if (status === 'unauthenticated') {
+      return null;
+   }
 
    return (
       <div className={`flex h-screen w-full overflow-hidden transition-colors duration-700 ease-in-out ${isDarkMode ? 'bg-[#0f172a]' : 'bg-[#f0f4f8]'}`}>

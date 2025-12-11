@@ -10,7 +10,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSound } from '../context/SoundContext';
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import LanguageSelector from './LanguageSelector';
 
 export default function Sidebar() {
@@ -118,9 +118,12 @@ export default function Sidebar() {
               </div>
               <div className={`overflow-hidden whitespace-nowrap transition-all duration-500 ${isSidebarCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100'}`}>
                 <p className="text-sm font-bold truncate">Admin User</p>
-                <Link href="/login" className="text-[10px] opacity-70 hover:text-red-500 flex items-center gap-1 mt-0.5 cursor-pointer transition-colors">
+                <button
+                  onClick={() => signOut({ redirect: true, callbackUrl: '/login' })}
+                  className="text-[10px] opacity-70 hover:text-red-500 flex items-center gap-1 mt-0.5 cursor-pointer transition-colors"
+                >
                   <LogOut size={10} /> {t('logout')}
-                </Link>
+                </button>
               </div>
             </div>
           </div>

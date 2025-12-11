@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useSound } from '../context/SoundContext';
-import { useSession } from 'next-auth/react'; // Import useSession
+import { useSession, signOut } from 'next-auth/react'; // Added signOut
 
 export default function Header() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -23,9 +23,10 @@ export default function Header() {
 
   const { data: session } = useSession(); // Access session data
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     play('logout');
-    router.push('/login');
+    // Use signOut to properly clear session and redirect to login
+    await signOut({ redirect: true, callbackUrl: '/login' });
   };
 
   useEffect(() => {
